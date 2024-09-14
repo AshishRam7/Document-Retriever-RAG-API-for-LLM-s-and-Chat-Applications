@@ -55,14 +55,14 @@ def search():
             "API_calls_used" : session["api_count"]
             }
 
-    if(session["api_count"] == 1):
-        es.index(index='user', id=user_id, document=session_info)
-    else:
-        update_info = {
-            "Inference_Time" : time_for_inference,
-            "API_calls_used" : session["api_count"]
-        }
-        es.update(index='user', id=user_id, doc=update_info)
+    # if(session["api_count"] == 1):
+    #     es.index(index='user', id=user_id, document=session_info)
+    # else:
+    #     update_info = {
+    #         "Inference_Time" : time_for_inference,
+    #         "API_calls_used" : session["api_count"]
+    #     }
+    #     es.update(index='user', id=user_id, doc=update_info)
 
     return jsonify(session_info)
 
@@ -71,7 +71,7 @@ def reset_session():
     data = request.get_json()
     user_id = data["user_id"]
     session.pop("api_count",None)
-    es.index(index='user', id=user_id, document={"session": "reset"})
+    # es.index(index='user', id=user_id, document={"session": "reset"})
     return {"status" : "session has been reset"}
 
 if __name__ == "__main__":
