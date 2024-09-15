@@ -11,9 +11,9 @@ Tech Stack Used/Implementation Progress:
 4. Algorithm for similarity detection and search - Cosine Similarity 
 5. Document Dataset used for Text Corpus - randomly chosen pdf's from(loaded into sample_text) - https://github.com/tpn/pdfs
 6. API Rate Limiting - session module in Flask
-7. background scraping process - threading, newsapi , beautifulsoup(partial implementation/initializatiom)
-8. Logging - ElasticSearch(Only initialized due to time constraints)
-9. Caching - Redis (Attempted but faced errors that couldn't be resolved on time)
+7. Caching - Redis
+8. background scraping process - scrapy (https://scrapy.org/) (partial implementation/initialization only due to error)
+9. Logging - ElasticSearch(Only initialized due to time constraints)
 10. Other Python libraries used - PyPDF2(Document parsing), time(Inference time)
 
 Steps to run the project:
