@@ -7,6 +7,7 @@ from qdrant_client.http import models
 import threading
 import requests
 from bs4 import BeautifulSoup
+from newsapi import NewsApiClient
 
 app = Flask(__name__)
 # app.config['TESTING'] = True
@@ -14,7 +15,7 @@ app = Flask(__name__)
 max_calls_api = 5
 
 app.secret_key = "21BCE6193"
-NEWS_API_KEY = "7120a59089024152a1c46783dec2d1b1"
+newsapi = NewsApiClient(api_key='7120a59089024152a1c46783dec2d1b1')
 
 qdrant_client = QdrantClient(
     "https://a3329a8d-14a1-4e8c-8e8f-020d8c23d5b5.europe-west3-0.gcp.cloud.qdrant.io:6333",
@@ -111,50 +112,87 @@ def reset_session():
     # es.index(index='user', id=user_id, document={"session": "reset"})
     return {"status" : "session has been reset"}
 
+def split_text(text, chunk_size=1000, chunk_overlap=100):
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = start + chunk_size
+        chunk = text[start:end]
+        chunks.append(chunk)
+        start = end - chunk_overlap
+    return chunks
+
+def get_last_indexed_point():
+    try:
+        search_result = qdrant_client.search(
+            collection_name="Documents",
+            query_vector=[0.0] * 768,
+            limit=1,
+            with_payload=False,
+            with_vectors=False,
+            score_threshold=0.0,
+            sort_by="id",
+            descending=True
+        )
+        if search_result:
+            last_point_id = int(search_result[0].id)
+            return last_point_id
+    except Exception as e:
+        print(f"Error fetching last indexed point: {e}")
+    
+    return 0
+
 def news_scraper():
     while True:
         try:
-            print("Web Scraper is Executing")
-            response = requests.get("https://news.ycombinator.com/")
-            soup = BeautifulSoup(response.text, 'html.parser')
+            last_index = get_last_indexed_point()
+            print(f"Starting from index {last_index + 1}")
 
-            headlines = soup.find_all('a', class_='storylink')
+            top_headlines = newsapi.get_top_headlines(q='bitcoin',
+                                                      sources='bbc-news,the-verge',
+                                                      category='business',
+                                                      language='en',
+                                                      country='us')
+
+            articles = top_headlines.get('articles', [])
 
             points = []
-            for i, headline in enumerate(headlines[:2]):
-                title = headline.get_text()
-                url = headline.get('href')
+            for i, article in enumerate(articles[:5]):
+                title = article.get("title", "No Title")
+                content = article.get("content", article.get("description", ""))
 
-                article_response = requests.get(url)
-                article_soup = BeautifulSoup(article_response.text, 'html.parser')
-                content = article_soup.get_text()
+                if not content.strip():
+                    print(f"News article empty : {title}")
+                    continue
 
-                title_embedding = model.encode(title).tolist()
-                content_embedding = model.encode(content).tolist()
+                chunked_content = split_text(content)
 
-                title_point = models.PointStruct(
-                    id=f"hn_title_{int(time.time())}_{i}",
-                    vector=title_embedding,
-                    payload={"title": title, "source": "Hacker News"}
-                )
-                content_point = models.PointStruct(
-                    id=f"hn_content_{int(time.time())}_{i}",
-                    vector=content_embedding,
-                    payload={"title": title, "content": content, "source": "Hacker News"}
-                )
-                points.append(title_point)
-                points.append(content_point)
-                print(f"Processed headline: {title} - {url}")
+                for j, chunk in enumerate(chunked_content):
+                    embedding = model.encode(chunk).tolist()
+
+                    point_id = last_index + 1 
+                    last_index += 1 
+
+                    point = models.PointStruct(
+                        id=point_id, 
+                        vector=embedding,
+                        payload={
+                            "file_name": title,
+                            "text": chunk,
+                        }
+                    )
+                    points.append(point)
+                    print(f"Processed article: {title} (Chunk {j + 1})")
 
             if points:
                 qdrant_client.upsert(
-                    collection_name = "Documents",
+                    collection_name="Documents",
                     points=points
                 )
-                print(f"Uploaded {len(points)} articles to Vector Database")
+                print(f"Uploaded {len(points)} article chunks to Vector Database")
 
         except Exception as e:
-            print(f"Error during news scraping: {e}")
+            print(f"Error fetching or uploading news: {e}")
 
         time.sleep(600)
 
@@ -162,7 +200,8 @@ def news_scraper():
 def background_worker():
     bg_thread = threading.Thread(target=news_scraper, daemon = True)
     bg_thread.start()
-    print("Green")
+    news_scraper()
 
 if __name__ == "__main__":
     app.run(debug=True)
+    background_worker()
