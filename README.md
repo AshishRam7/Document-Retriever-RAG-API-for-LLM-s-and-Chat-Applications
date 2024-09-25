@@ -1,7 +1,13 @@
-Official Submission for the TradeMarkia AI Intern assignment . Name: Ashish Ram J A, Register Number: 21BCE6193 
-
-Document Retriever implemented as a RESTful POST API endpoint
+Document Retriever for RAG’s to generate context for LLM’s and Chat Apps implemented as a RESTful POST API endpoint
 ![Untitled design (14)](https://github.com/user-attachments/assets/336aabb8-c83b-4d1c-9d0f-6b3082e26990)
+
+Built a backend RESTful API server using Flask for a document retriever to generate context for large
+language models (LLMs) and chat applications to use for inference.
+• Leveraged Ollama’s nomic-embed-text embedding model for vector embeddings , and used Qdrant vector
+database to store the embeddings and corresponding text chunk. Stored API Logs on SQLite DB.
+• Implemented Caching to reduce Inference Time by storing recently accessed embeddings on Redis.
+
+
 
 
 Tech Stack Used/Implementation Progress:
